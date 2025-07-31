@@ -18,7 +18,11 @@ struct NewList: ParsableCommand {
     let reminders = Reminders()
     
     if reminders.getList(withName: name) != nil {
-      print("A list with the name '\(name)' already exists.", to: &standardError)
+      print("A list with the name '\(name)' already exists. Please choose a different name.", to: &standardError)
+      print("Existing lists:", to: &standardError)
+      for list in reminders.getLists() {
+        print("  - \(list.title)", to: &standardError)
+      }
       throw ExitCode.failure
     }
     
