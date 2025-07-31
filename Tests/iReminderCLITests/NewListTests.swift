@@ -1,97 +1,109 @@
 import XCTest
 import ArgumentParser
+import EventKit
 @testable import iReminderCLI
 
 final class NewListTests: XCTestCase {
   
-  func testNewListCreation() throws {
-    // Test successful list creation
-    let outputPipe = Pipe()
-    let errorPipe = Pipe()
-    
-    // Redirect stdout and stderr
-    let originalStdout = dup(STDOUT_FILENO)
-    let originalStderr = dup(STDERR_FILENO)
-    dup2(outputPipe.fileHandleForWriting.fileDescriptor, STDOUT_FILENO)
-    dup2(errorPipe.fileHandleForWriting.fileDescriptor, STDERR_FILENO)
-    
-    defer {
-      // Restore stdout and stderr
-      dup2(originalStdout, STDOUT_FILENO)
-      dup2(originalStderr, STDERR_FILENO)
-      close(originalStdout)
-      close(originalStderr)
-    }
-    
-    // Since we can't easily inject dependencies into NewList,
-    // we'll test the logic separately
+  // MARK: - Mock Functionality Tests
+  
+  func testMockRemindersCreateList() throws {
     let mockReminders = MockReminders()
+    mockReminders.availableSources = [
+      MockSource(title: "iCloud", sourceType: .calDAV),
+      MockSource(title: "Local", sourceType: .local)
+    ]
     
-    // Test 1: Create new list successfully
-    let listName = "Test List"
-    XCTAssertNil(mockReminders.getList(withName: listName))
-    
-    let newList = try mockReminders.createList(name: listName, source: nil)
-    XCTAssertEqual(newList.title, listName)
+    // Test successful list creation
+    let calendar = try mockReminders.createList(name: "Test List", sourceTitle: nil)
+    XCTAssertEqual(calendar.title, "Test List")
     XCTAssertTrue(mockReminders.createListCalled)
-    XCTAssertEqual(mockReminders.lastCreatedListName, listName)
+    XCTAssertEqual(mockReminders.lastCreatedListName, "Test List")
+    XCTAssertNil(mockReminders.lastCreatedListSourceTitle)
+    
+    // Save the list
+    try mockReminders.saveList(calendar)
+    XCTAssertTrue(mockReminders.saveListCalled)
+    
+    // Verify it exists
+    let foundList = mockReminders.getList(withName: "Test List")
+    XCTAssertNotNil(foundList)
+    XCTAssertEqual(foundList?.title, "Test List")
   }
   
-  func testListAlreadyExists() {
+  func testMockRemindersCreateListWithSource() throws {
     let mockReminders = MockReminders()
-    mockReminders.existingLists = ["Existing List"]
+    mockReminders.availableSources = [
+      MockSource(title: "iCloud", sourceType: .calDAV),
+      MockSource(title: "Local", sourceType: .local)
+    ]
+    
+    // Create with specific source
+    let calendar = try mockReminders.createList(name: "Cloud List", sourceTitle: "iCloud")
+    XCTAssertEqual(calendar.title, "Cloud List")
+    XCTAssertEqual(mockReminders.lastCreatedListSourceTitle, "iCloud")
+  }
+  
+  func testMockRemindersListAlreadyExists() {
+    let mockReminders = MockReminders()
+    mockReminders.addMockList("Existing List")
     
     let existingList = mockReminders.getList(withName: "Existing List")
     XCTAssertNotNil(existingList)
     XCTAssertEqual(existingList?.title, "Existing List")
+    
+    // Test case insensitive
+    XCTAssertNotNil(mockReminders.getList(withName: "existing list"))
+    XCTAssertNotNil(mockReminders.getList(withName: "EXISTING LIST"))
   }
   
-  func testListNameCaseInsensitive() {
+  func testMockRemindersGetAllLists() {
     let mockReminders = MockReminders()
-    mockReminders.existingLists = ["Test List"]
+    mockReminders.addMockList("List 1")
+    mockReminders.addMockList("List 2")
+    mockReminders.addMockList("List 3")
     
-    XCTAssertNotNil(mockReminders.getList(withName: "test list"))
-    XCTAssertNotNil(mockReminders.getList(withName: "TEST LIST"))
-    XCTAssertNotNil(mockReminders.getList(withName: "Test List"))
+    let lists = mockReminders.getLists()
+    XCTAssertEqual(lists.count, 3)
+    XCTAssertTrue(lists.contains { $0.title == "List 1" })
+    XCTAssertTrue(lists.contains { $0.title == "List 2" })
+    XCTAssertTrue(lists.contains { $0.title == "List 3" })
   }
   
-  func testSourceSelection() throws {
-    let mockReminders = MockReminders()
-    let icloudSource = MockEKSource(title: "iCloud")
-    let localSource = MockEKSource(title: "Local")
-    mockReminders.availableSources = [icloudSource, localSource]
-    
-    let sources = mockReminders.getSources()
-    XCTAssertEqual(sources.count, 2)
-    XCTAssertTrue(sources.contains { $0.title == "iCloud" })
-    XCTAssertTrue(sources.contains { $0.title == "Local" })
-    
-    // Test creating list with specific source
-    let listName = "Test List"
-    _ = try mockReminders.createList(name: listName, source: icloudSource)
-    XCTAssertEqual(mockReminders.lastCreatedListSource?.title, "iCloud")
-  }
-  
-  func testSourceNotFound() {
-    let mockReminders = MockReminders()
-    let localSource = MockEKSource(title: "Local")
-    mockReminders.availableSources = [localSource]
-    
-    let sources = mockReminders.getSources()
-    let nonExistentSource = sources.first { $0.title.lowercased() == "dropbox".lowercased() }
-    XCTAssertNil(nonExistentSource)
-  }
-  
-  func testCreateListError() {
+  func testMockRemindersCreateListError() {
     let mockReminders = MockReminders()
     mockReminders.shouldThrowOnCreate = true
     
-    XCTAssertThrowsError(try mockReminders.createList(name: "Test List", source: nil)) { error in
+    XCTAssertThrowsError(try mockReminders.createList(name: "Test List", sourceTitle: nil)) { error in
       XCTAssertEqual(error.localizedDescription, "Failed to create list")
     }
   }
   
-  // Integration test for command parsing
+  func testMockRemindersSaveListError() {
+    let mockReminders = MockReminders()
+    mockReminders.shouldThrowOnSave = true
+    
+    let calendar = EKCalendar(for: .reminder, eventStore: EKEventStore())
+    calendar.title = "Test List"
+    
+    XCTAssertThrowsError(try mockReminders.saveList(calendar)) { error in
+      XCTAssertEqual(error.localizedDescription, "Failed to save list")
+    }
+  }
+  
+  func testMockRemindersSourceNotFound() {
+    let mockReminders = MockReminders()
+    mockReminders.availableSources = [
+      MockSource(title: "Local", sourceType: .local)
+    ]
+    
+    XCTAssertThrowsError(try mockReminders.createList(name: "Test", sourceTitle: "iCloud")) { error in
+      XCTAssertEqual(error.localizedDescription, "Source not found")
+    }
+  }
+  
+  // MARK: - Command Parsing Tests
+  
   func testCommandParsing() throws {
     var command = try NewList.parse(["Test List"])
     XCTAssertEqual(command.name, "Test List")
@@ -116,5 +128,29 @@ final class NewListTests: XCTestCase {
       // We just verify that parsing fails with unexpected arguments
       XCTAssertNotNil(error)
     }
+  }
+  
+  // MARK: - Logic Tests
+  
+  func testNewListLogic() throws {
+    // These tests verify the business logic without executing the actual command
+    let mockReminders = MockReminders()
+    
+    // Test 1: Can't create duplicate list
+    mockReminders.addMockList("Shopping")
+    XCTAssertNotNil(mockReminders.getList(withName: "Shopping"))
+    
+    // Test 2: Available sources
+    mockReminders.availableSources = [
+      MockSource(title: "iCloud", sourceType: .calDAV),
+      MockSource(title: "Local", sourceType: .local),
+      MockSource(title: "Exchange", sourceType: .exchange)
+    ]
+    
+    let sources = mockReminders.getSources()
+    XCTAssertEqual(sources.count, 3)
+    XCTAssertTrue(sources.contains { $0.title == "iCloud" })
+    XCTAssertTrue(sources.contains { $0.title == "Local" })
+    XCTAssertTrue(sources.contains { $0.title == "Exchange" })
   }
 }

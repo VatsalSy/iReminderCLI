@@ -2,69 +2,116 @@ import Foundation
 import EventKit
 @testable import iReminderCLI
 
-protocol RemindersProtocol {
-  func getList(withName name: String) -> EKCalendar?
-  func getSources() -> [MockEKSource]
-  func createList(name: String, source: MockEKSource?) throws -> EKCalendar
+// Protocol for testable source - abstracts away EKSource details
+protocol SourceProtocol {
+  var title: String { get }
+  var sourceIdentifier: String { get }
+  var sourceType: EKSourceType { get }
 }
 
+// Protocol that mirrors the actual Reminders class interface
+protocol RemindersProtocol {
+  func getList(withName name: String) -> EKCalendar?
+  func getLists() -> [EKCalendar]
+  func getSources() -> [SourceProtocol]
+  func createList(name: String, sourceTitle: String?) throws -> EKCalendar
+  func saveList(_ calendar: EKCalendar) throws
+}
+
+// Mock implementation of a source
+struct MockSource: SourceProtocol {
+  let title: String
+  let sourceIdentifier: String
+  let sourceType: EKSourceType
+  
+  init(title: String, sourceType: EKSourceType = .local) {
+    self.title = title
+    self.sourceIdentifier = UUID().uuidString
+    self.sourceType = sourceType
+  }
+}
+
+// Mock implementation for testing
 class MockReminders: RemindersProtocol {
   var existingLists: [String] = []
-  var availableSources: [MockEKSource] = []
+  var availableSources: [MockSource] = []
   var shouldThrowOnCreate = false
+  var shouldThrowOnSave = false
   var createListCalled = false
+  var saveListCalled = false
   var lastCreatedListName: String?
-  var lastCreatedListSource: MockEKSource?
+  var lastCreatedListSourceTitle: String?
+  
+  private var mockCalendars: [EKCalendar] = []
   
   func getList(withName name: String) -> EKCalendar? {
-    if existingLists.contains(where: { $0.lowercased() == name.lowercased() }) {
-      let calendar = EKCalendar(for: .reminder, eventStore: EKEventStore())
-      calendar.title = name
-      return calendar
-    }
-    return nil
+    return mockCalendars.first { $0.title.lowercased() == name.lowercased() }
   }
   
-  func getSources() -> [MockEKSource] {
+  func getLists() -> [EKCalendar] {
+    return mockCalendars
+  }
+  
+  func getSources() -> [SourceProtocol] {
     return availableSources
   }
   
-  func createList(name: String, source: MockEKSource?) throws -> EKCalendar {
+  func createList(name: String, sourceTitle: String?) throws -> EKCalendar {
     createListCalled = true
     lastCreatedListName = name
-    lastCreatedListSource = source
+    lastCreatedListSourceTitle = sourceTitle
     
     if shouldThrowOnCreate {
       throw MockError.createListFailed
     }
     
+    // For testing, we need to create a mock calendar since we can't
+    // create real EKCalendar objects without a real event store
     let calendar = EKCalendar(for: .reminder, eventStore: EKEventStore())
     calendar.title = name
+    
+    // Find the source if specified
+    if let sourceTitle = sourceTitle {
+      if availableSources.first(where: { $0.title.lowercased() == sourceTitle.lowercased() }) == nil {
+        throw MockError.sourceNotFound
+      }
+    }
+    
     return calendar
   }
-}
-
-// Mock EKSource - we can't subclass EKSource directly as it's a cluster class
-// Instead, we'll create a wrapper that behaves like an EKSource for testing
-class MockEKSource {
-  let title: String
-  let sourceType: EKSourceType
-  let sourceIdentifier: String
   
-  init(title: String, sourceType: EKSourceType = .local) {
-    self.title = title
-    self.sourceType = sourceType
-    self.sourceIdentifier = UUID().uuidString
+  func saveList(_ calendar: EKCalendar) throws {
+    saveListCalled = true
+    
+    if shouldThrowOnSave {
+      throw MockError.saveListFailed
+    }
+    
+    // Add to our mock storage
+    mockCalendars.append(calendar)
+  }
+  
+  // Helper method to pre-populate lists for testing
+  func addMockList(_ name: String) {
+    let calendar = EKCalendar(for: .reminder, eventStore: EKEventStore())
+    calendar.title = name
+    mockCalendars.append(calendar)
   }
 }
 
 enum MockError: Error, LocalizedError {
   case createListFailed
+  case saveListFailed
+  case sourceNotFound
   
   var errorDescription: String? {
     switch self {
     case .createListFailed:
       return "Failed to create list"
+    case .saveListFailed:
+      return "Failed to save list"
+    case .sourceNotFound:
+      return "Source not found"
     }
   }
 }
