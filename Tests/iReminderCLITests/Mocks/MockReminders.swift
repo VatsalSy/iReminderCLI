@@ -4,8 +4,8 @@ import EventKit
 
 protocol RemindersProtocol {
   func getList(withName name: String) -> EKCalendar?
-  func getSources() -> [EKSource]
-  func createList(name: String, source: EKSource?) throws -> EKCalendar
+  func getSources() -> [MockEKSource]
+  func createList(name: String, source: MockEKSource?) throws -> EKCalendar
 }
 
 class MockReminders: RemindersProtocol {
@@ -14,7 +14,7 @@ class MockReminders: RemindersProtocol {
   var shouldThrowOnCreate = false
   var createListCalled = false
   var lastCreatedListName: String?
-  var lastCreatedListSource: EKSource?
+  var lastCreatedListSource: MockEKSource?
   
   func getList(withName name: String) -> EKCalendar? {
     if existingLists.contains(where: { $0.lowercased() == name.lowercased() }) {
@@ -25,11 +25,11 @@ class MockReminders: RemindersProtocol {
     return nil
   }
   
-  func getSources() -> [EKSource] {
+  func getSources() -> [MockEKSource] {
     return availableSources
   }
   
-  func createList(name: String, source: EKSource?) throws -> EKCalendar {
+  func createList(name: String, source: MockEKSource?) throws -> EKCalendar {
     createListCalled = true
     lastCreatedListName = name
     lastCreatedListSource = source
@@ -44,16 +44,17 @@ class MockReminders: RemindersProtocol {
   }
 }
 
-class MockEKSource: EKSource {
-  private let _title: String
+// Mock EKSource - we can't subclass EKSource directly as it's a cluster class
+// Instead, we'll create a wrapper that behaves like an EKSource for testing
+class MockEKSource {
+  let title: String
+  let sourceType: EKSourceType
+  let sourceIdentifier: String
   
-  init(title: String) {
-    self._title = title
-    super.init()
-  }
-  
-  override var title: String {
-    return _title
+  init(title: String, sourceType: EKSourceType = .local) {
+    self.title = title
+    self.sourceType = sourceType
+    self.sourceIdentifier = UUID().uuidString
   }
 }
 
