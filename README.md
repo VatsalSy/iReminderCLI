@@ -17,7 +17,7 @@ A command-line interface for managing Apple Reminders on macOS.
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/iReminderCLI.git
+git clone https://github.com/VatsalSy/iReminderCLI.git
 cd iReminderCLI
 
 # Build the project
@@ -157,7 +157,7 @@ This tool requires access to your Reminders data. On first run, macOS will promp
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/iReminderCLI.git
+git clone https://github.com/VatsalSy/iReminderCLI.git
 cd iReminderCLI
 
 # Build debug version
