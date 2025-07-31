@@ -140,6 +140,18 @@ do {
   print("Failed to perform operation: \(error.localizedDescription)", to: &standardError)
   throw ExitCode.failure
 }
+
+// Best Practice: Show helpful context on errors
+// Example from NewList command when duplicate is found:
+if reminders.getList(withName: name) != nil {
+  print("A list with the name '\(name)' already exists. Please choose a different name.", to: &standardError)
+  print("Existing lists:", to: &standardError)
+  for list in reminders.getLists() {
+    print("  - \(list.title)", to: &standardError)
+  }
+  throw ExitCode.failure
+}
+// This pattern provides immediate helpful information to users without requiring additional commands
 ```
 
 ### JSON Output Pattern
