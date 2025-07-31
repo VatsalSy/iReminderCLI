@@ -22,5 +22,8 @@ let package = Package(
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency")
             ]),
+        .testTarget(
+            name: "iReminderCLITests",
+            dependencies: ["iReminderCLI"]),
     ]
 )
