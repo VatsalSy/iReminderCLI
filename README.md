@@ -145,13 +145,27 @@ The tool supports various natural language date formats:
 
 ## Requirements
 
-- macOS 13.0 or later
-- Swift 6.1 or later
+- macOS 13.0 or later (Ventura+) - Required for EventKit's full Reminders access API
+- Swift 6.1 or later - Leverages StrictConcurrency for thread safety
 - Reminders access permission (will be requested on first run)
 
-## Privacy
+## Security & Privacy
 
-This tool requires access to your Reminders data. On first run, macOS will prompt you to grant access. The tool only accesses Reminders data locally and does not send any data over the network.
+### Data Privacy
+- **Local-only operation**: All data processing happens locally on your Mac
+- **No network access**: The tool never sends your reminder data over the internet
+- **No analytics**: No usage data or telemetry is collected
+- **Direct EventKit integration**: Uses Apple's official APIs for secure Reminders access
+
+### Permissions
+- On first run, macOS will prompt you to grant Reminders access
+- You can revoke access anytime in System Settings → Privacy & Security → Reminders
+- The tool will only access reminder data when you explicitly run commands
+
+### Best Practices
+- The tool doesn't store any credentials or sensitive data
+- All reminder operations go through macOS's security sandbox
+- Command history in your shell may contain reminder text - use your shell's privacy features if needed
 
 ## Building from Source
 
