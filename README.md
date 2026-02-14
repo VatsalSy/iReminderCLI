@@ -20,11 +20,18 @@ A command-line interface for managing Apple Reminders on macOS.
 git clone https://github.com/VatsalSy/iReminderCLI.git
 cd iReminderCLI
 
-# Build the project
-swift build -c release
+# Build + install (uses sudo automatically if needed)
+./install.sh
 
-# Copy to your PATH
-cp .build/release/iReminderCLI /usr/local/bin/ireminder
+# Optional: custom install location/name
+./install.sh --install-dir "$HOME/.local/bin" --name ireminder
+```
+
+Manual workflow:
+
+```bash
+swift build -c release
+sudo cp .build/release/iReminderCLI /usr/local/bin/ireminder
 ```
 
 ## Usage

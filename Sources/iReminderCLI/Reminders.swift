@@ -1,5 +1,6 @@
 import EventKit
 import Foundation
+import os
 
 class Reminders {
   private let store = EKEventStore()
@@ -11,10 +12,11 @@ class Reminders {
   
   private func requestAccess() {
     let semaphore = DispatchSemaphore(value: 0)
+    let grantedAccess = OSAllocatedUnfairLock(initialState: false)
     
     if #available(macOS 14.0, *) {
       store.requestFullAccessToReminders { granted, error in
-        self.accessGranted = granted
+        grantedAccess.withLock { $0 = granted }
         if let error = error {
           print("Error requesting access: \(error.localizedDescription)", to: &standardError)
         }
@@ -22,7 +24,7 @@ class Reminders {
       }
     } else {
       store.requestAccess(to: .reminder) { granted, error in
-        self.accessGranted = granted
+        grantedAccess.withLock { $0 = granted }
         if let error = error {
           print("Error requesting access: \(error.localizedDescription)", to: &standardError)
         }
@@ -31,6 +33,7 @@ class Reminders {
     }
     
     semaphore.wait()
+    self.accessGranted = grantedAccess.withLock { $0 }
     
     if !accessGranted {
       print("Access to Reminders denied. Please grant access in System Preferences.", to: &standardError)
