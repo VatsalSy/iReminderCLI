@@ -19,8 +19,17 @@ let package = Package(
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ],
+            exclude: ["Info.plist"],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency")
+            ],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "-sectcreate",
+                    "-Xlinker", "__TEXT",
+                    "-Xlinker", "__info_plist",
+                    "-Xlinker", "Sources/iReminderCLI/Info.plist",
+                ])
             ]),
         .testTarget(
             name: "iReminderCLITests",

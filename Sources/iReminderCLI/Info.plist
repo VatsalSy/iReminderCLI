@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key>
+  <string>com.vatsalsy.iremindercli</string>
+  <key>CFBundleName</key>
+  <string>iReminderCLI</string>
+  <key>NSRemindersUsageDescription</key>
+  <string>iReminderCLI needs access to your Reminders to list and update your tasks from the command line.</string>
+  <key>NSRemindersFullAccessUsageDescription</key>
+  <string>iReminderCLI needs full access to your Reminders to create, edit, and complete reminders from the command line.</string>
+</dict>
+</plist>
