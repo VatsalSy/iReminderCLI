@@ -21,12 +21,20 @@ class Reminders {
     return !(legacyAccess?.isEmpty ?? true)
   }
 
-  private func hasReminderAccess(_ status: EKAuthorizationStatus) -> Bool {
+  static func hasReminderAccess(_ status: EKAuthorizationStatus) -> Bool {
     if #available(macOS 14.0, *) {
-      return status == .fullAccess || status == .writeOnly
+      return status == .fullAccess
     }
 
     return status == .authorized
+  }
+
+  static func shouldRequestReminderAccess(_ status: EKAuthorizationStatus) -> Bool {
+    if #available(macOS 14.0, *) {
+      return status == .notDetermined || status == .writeOnly
+    }
+
+    return status == .notDetermined
   }
 
   private static func reportRequestError(_ error: Error) {
@@ -58,12 +66,12 @@ class Reminders {
     }
 
     let currentStatus = EKEventStore.authorizationStatus(for: .reminder)
-    if hasReminderAccess(currentStatus) {
+    if Self.hasReminderAccess(currentStatus) {
       accessGranted = true
       return
     }
 
-    if currentStatus != .notDetermined {
+    if !Self.shouldRequestReminderAccess(currentStatus) {
       printAccessDeniedGuidance()
       exit(1)
     }

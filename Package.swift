@@ -2,6 +2,12 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
+import Foundation
+
+let infoPlistPath = URL(fileURLWithPath: #filePath)
+    .deletingLastPathComponent()
+    .appendingPathComponent("Sources/iReminderCLI/Info.plist")
+    .path
 
 let package = Package(
     name: "iReminderCLI",
