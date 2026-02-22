@@ -2,6 +2,12 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
+import Foundation
+
+let infoPlistPath = URL(fileURLWithPath: #filePath)
+    .deletingLastPathComponent()
+    .appendingPathComponent("Sources/iReminderCLI/Info.plist")
+    .path
 
 let package = Package(
     name: "iReminderCLI",
@@ -19,8 +25,17 @@ let package = Package(
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ],
+            exclude: ["Info.plist"],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency")
+            ],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "-sectcreate",
+                    "-Xlinker", "__TEXT",
+                    "-Xlinker", "__info_plist",
+                    "-Xlinker", infoPlistPath,
+                ])
             ]),
         .testTarget(
             name: "iReminderCLITests",

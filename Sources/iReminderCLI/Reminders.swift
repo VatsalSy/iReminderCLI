@@ -9,8 +9,73 @@ class Reminders {
   init() {
     requestAccess()
   }
+
+  private func hasReminderUsageDescription() -> Bool {
+    if #available(macOS 14.0, *) {
+      let fullAccess = Bundle.main.object(forInfoDictionaryKey: "NSRemindersFullAccessUsageDescription") as? String
+      let legacyAccess = Bundle.main.object(forInfoDictionaryKey: "NSRemindersUsageDescription") as? String
+      return !(fullAccess?.isEmpty ?? true) || !(legacyAccess?.isEmpty ?? true)
+    }
+
+    let legacyAccess = Bundle.main.object(forInfoDictionaryKey: "NSRemindersUsageDescription") as? String
+    return !(legacyAccess?.isEmpty ?? true)
+  }
+
+  static func hasReminderAccess(_ status: EKAuthorizationStatus) -> Bool {
+    if #available(macOS 14.0, *) {
+      return status == .fullAccess
+    }
+
+    return status == .authorized
+  }
+
+  static func shouldRequestReminderAccess(_ status: EKAuthorizationStatus) -> Bool {
+    if #available(macOS 14.0, *) {
+      return status == .notDetermined || status == .writeOnly
+    }
+
+    return status == .notDetermined
+  }
+
+  private static func reportRequestError(_ error: Error) {
+    let nsError = error as NSError
+    print(
+      "Failed to request Reminders access (\(nsError.domain) code \(nsError.code)): \(nsError.localizedDescription)",
+      to: &standardError
+    )
+  }
+
+  private func printAccessDeniedGuidance() {
+    print("Access to Reminders denied.", to: &standardError)
+    print(
+      "Grant access for your terminal app in System Settings > Privacy & Security > Reminders.",
+      to: &standardError
+    )
+    print("If you previously denied access, reset and retry:", to: &standardError)
+    print("  tccutil reset Reminders", to: &standardError)
+  }
   
   private func requestAccess() {
+    if !hasReminderUsageDescription() {
+      print(
+        "This build is missing NSReminders usage description metadata required by macOS.",
+        to: &standardError
+      )
+      print("Rebuild iReminderCLI from source and reinstall.", to: &standardError)
+      exit(1)
+    }
+
+    let currentStatus = EKEventStore.authorizationStatus(for: .reminder)
+    if Self.hasReminderAccess(currentStatus) {
+      accessGranted = true
+      return
+    }
+
+    if !Self.shouldRequestReminderAccess(currentStatus) {
+      printAccessDeniedGuidance()
+      exit(1)
+    }
+
     let semaphore = DispatchSemaphore(value: 0)
     let grantedAccess = OSAllocatedUnfairLock(initialState: false)
     
@@ -18,7 +83,7 @@ class Reminders {
       store.requestFullAccessToReminders { granted, error in
         grantedAccess.withLock { $0 = granted }
         if let error = error {
-          print("Error requesting access: \(error.localizedDescription)", to: &standardError)
+          Self.reportRequestError(error)
         }
         semaphore.signal()
       }
@@ -26,7 +91,7 @@ class Reminders {
       store.requestAccess(to: .reminder) { granted, error in
         grantedAccess.withLock { $0 = granted }
         if let error = error {
-          print("Error requesting access: \(error.localizedDescription)", to: &standardError)
+          Self.reportRequestError(error)
         }
         semaphore.signal()
       }
@@ -36,7 +101,7 @@ class Reminders {
     self.accessGranted = grantedAccess.withLock { $0 }
     
     if !accessGranted {
-      print("Access to Reminders denied. Please grant access in System Preferences.", to: &standardError)
+      printAccessDeniedGuidance()
       exit(1)
     }
   }
