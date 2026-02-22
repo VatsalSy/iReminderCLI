@@ -5,8 +5,12 @@ import EventKit
 final class ReminderPermissionLogicTests: XCTestCase {
   func testLegacyStatusRequiresAuthorized() {
     XCTAssertTrue(Reminders.hasReminderAccess(.authorized))
+    XCTAssertFalse(Reminders.hasReminderAccess(.denied))
+    XCTAssertFalse(Reminders.hasReminderAccess(.restricted))
+
     XCTAssertTrue(Reminders.shouldRequestReminderAccess(.notDetermined))
     XCTAssertFalse(Reminders.shouldRequestReminderAccess(.denied))
+    XCTAssertFalse(Reminders.shouldRequestReminderAccess(.restricted))
   }
 
   @available(macOS 14.0, *)

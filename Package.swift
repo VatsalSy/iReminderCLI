@@ -34,7 +34,7 @@ let package = Package(
                     "-Xlinker", "-sectcreate",
                     "-Xlinker", "__TEXT",
                     "-Xlinker", "__info_plist",
-                    "-Xlinker", "Sources/iReminderCLI/Info.plist",
+                    "-Xlinker", infoPlistPath,
                 ])
             ]),
         .testTarget(
