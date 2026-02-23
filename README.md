@@ -4,14 +4,13 @@ A command-line interface for managing Apple Reminders on macOS.
 
 ## Features
 
-- List all reminder lists
-- Show reminders with filtering options
-- Add new reminders with natural language dates
-- Mark reminders as complete/incomplete
-- Edit existing reminders
-- Delete reminders
-- Create new reminder lists
-- JSON output support for scripting
+- List all reminder lists.
+- Show reminders from one list or all lists.
+- Filter reminders by completion state and due date.
+- Add reminders with natural-language due dates.
+- Complete, uncomplete, edit, and delete reminders by index or ID.
+- Create new reminder lists and choose account sources.
+- Output JSON for scripting and automations.
 
 ## Installation
 
@@ -34,111 +33,275 @@ swift build -c release
 sudo cp .build/release/iReminderCLI /usr/local/bin/ireminder
 ```
 
-## Usage
+## Quick Start
 
-### Show all reminder lists
+```bash
+# 1) See lists
+ireminder show-lists
+
+# 2) Add a reminder
+ireminder add "Inbox" "Follow up with Alex" --due-date "tomorrow 10am"
+
+# 3) Show reminders
+ireminder show "Inbox"
+
+# 4) Edit by index (from [0], [1], ...)
+ireminder edit "Inbox" 0 --notes "Waiting on response"
+```
+
+## How `<identifier>` Works
+
+Commands `complete`, `uncomplete`, `edit`, and `delete` take `<identifier>` as either:
+
+1. `index` (0-based), from regular `show` output like `[0]`.
+2. `id` (string), from JSON output field `id`.
+
+Get IDs:
+
+```bash
+# Full JSON objects with id/title/etc.
+ireminder show "Inbox" --json
+
+# IDs only (if jq is installed)
+ireminder show "Inbox" --json | jq -r '.[].id'
+```
+
+Notes:
+
+- In current builds, IDs are typically UUID-like strings (for example `B66DE785-4276-44F5-B16E-680EE3F19915`).
+- Quoting IDs is recommended in shell commands: `"<id>"`.
+- Quoting list names is also recommended: `"Inbox"`, `"Work Tasks"`.
+
+## Command Reference
+
+### `show-lists`
+
+Usage:
+
+```bash
+ireminder show-lists [--json]
+```
+
+Options:
+
+- `-j, --json`: Output lists in JSON format.
+
+Examples:
+
 ```bash
 ireminder show-lists
 ireminder show-lists --json
 ```
 
-### Show reminders in a list
+### `show`
+
+Usage:
+
 ```bash
-# Show incomplete reminders
-ireminder show "Shopping"
-
-# Include completed reminders
-ireminder show "Shopping" --include-completed
-
-# Show only completed reminders
-ireminder show "Shopping" --only-completed
-
-# Filter by due date
-ireminder show "Shopping" --due-date today
-ireminder show "Shopping" --due-date tomorrow
-
-# Sort by creation date instead of due date
-ireminder show "Shopping" --sort-by creation-date
-
-# JSON output
-ireminder show "Shopping" --json
+ireminder show <list-name> [--include-completed] [--only-completed] [--due-date <due-date>] [--json] [--sort-by <sort-by>]
 ```
 
-### Show reminders from all lists
+Arguments:
+
+- `<list-name>`: Reminder list name.
+
+Options:
+
+- `--include-completed`: Include completed reminders.
+- `--only-completed`: Show only completed reminders.
+- `--due-date <due-date>`: Filter by date (`today`, `tomorrow`, `2026-05-21`, etc.).
+- `-j, --json`: Output reminders in JSON format.
+- `--sort-by <sort-by>`: `due-date` (default) or `creation-date`.
+
+Examples:
+
+```bash
+ireminder show "Inbox"
+ireminder show "Inbox" --include-completed
+ireminder show "Inbox" --only-completed
+ireminder show "Inbox" --due-date today
+ireminder show "Inbox" --sort-by creation-date
+ireminder show "Inbox" --json
+```
+
+### `show-all`
+
+Usage:
+
+```bash
+ireminder show-all [--include-completed] [--only-completed] [--due-date <due-date>] [--json] [--sort-by <sort-by>]
+```
+
+Options:
+
+- `--include-completed`: Include completed reminders.
+- `--only-completed`: Show only completed reminders.
+- `--due-date <due-date>`: Filter by date.
+- `-j, --json`: Output reminders in JSON format.
+- `--sort-by <sort-by>`: `due-date` (default) or `creation-date`.
+
+Examples:
+
 ```bash
 ireminder show-all
-ireminder show-all --due-date today
 ireminder show-all --include-completed
+ireminder show-all --due-date tomorrow
+ireminder show-all --json
 ```
 
-### Add a new reminder
+### `add`
+
+Usage:
+
 ```bash
-# Basic reminder
-ireminder add "Shopping" "Buy milk"
-
-# With due date (natural language supported)
-ireminder add "Shopping" "Buy milk" --due-date "tomorrow 3pm"
-ireminder add "Work" "Finish report" --due-date "next Monday"
-ireminder add "Personal" "Call mom" --due-date "in 2 hours"
-
-# With priority (0-3, where 3 is highest)
-ireminder add "Work" "Important meeting" --priority 3
-
-# With notes
-ireminder add "Shopping" "Buy groceries" --notes "Don't forget organic vegetables"
-
-# All options combined
-ireminder add "Work" "Project deadline" --due-date "Friday 5pm" --priority 3 --notes "Final review needed"
+ireminder add <list-name> <text> [--due-date <due-date>] [--priority <priority>] [--notes <notes>]
 ```
 
-### Complete/Uncomplete reminders
+Arguments:
+
+- `<list-name>`: Reminder list name.
+- `<text>`: Reminder title.
+
+Options:
+
+- `--due-date <due-date>`: Natural-language due date.
+- `--priority <priority>`: Priority `0-3` (`3` highest, default `0`).
+- `--notes <notes>`: Reminder notes.
+
+Examples:
+
 ```bash
-# Complete by index (0-based)
-ireminder complete "Shopping" 0
-
-# Complete by ID
-ireminder complete "Shopping" "x-apple-reminder://ABCD1234"
-
-# Mark as incomplete
-ireminder uncomplete "Shopping" 0
+ireminder add "Inbox" "Follow up with finance"
+ireminder add "Work" "Finish quarterly report" --due-date "Friday 5pm"
+ireminder add "Work" "Incident review" --priority 3 --notes "Bring metrics"
 ```
 
-### Edit reminders
+### `complete`
+
+Usage:
+
 ```bash
-# Edit title
-ireminder edit "Shopping" 0 "Buy organic milk"
-
-# Edit notes
-ireminder edit "Shopping" 0 --notes "Check for 2% milk"
-
-# Edit both
-ireminder edit "Shopping" 0 "Buy milk and eggs" --notes "From farmer's market"
+ireminder complete <list-name> <identifier>
 ```
 
-### Delete reminders
+Arguments:
+
+- `<list-name>`: Reminder list name.
+- `<identifier>`: 0-based index or reminder ID string.
+
+Examples:
+
 ```bash
-# Delete by index
-ireminder delete "Shopping" 0
-
-# Delete by ID
-ireminder delete "Shopping" "x-apple-reminder://ABCD1234"
-
-# Include completed reminders when searching by index
-ireminder delete "Shopping" 0 --include-completed
+ireminder complete "Inbox" 0
+ireminder complete "Inbox" "B66DE785-4276-44F5-B16E-680EE3F19915"
 ```
 
-### Create a new list
+### `uncomplete`
+
+Usage:
+
 ```bash
-# Create in default account
+ireminder uncomplete <list-name> <identifier>
+```
+
+Arguments:
+
+- `<list-name>`: Reminder list name.
+- `<identifier>`: 0-based index or reminder ID string.
+
+Examples:
+
+```bash
+ireminder uncomplete "Inbox" 0
+ireminder uncomplete "Inbox" "B66DE785-4276-44F5-B16E-680EE3F19915"
+```
+
+### `edit`
+
+Usage:
+
+```bash
+ireminder edit <list-name> <identifier> [<text>] [--notes <notes>] [--due-date <due-date>] [--clear-due-date]
+```
+
+Arguments:
+
+- `<list-name>`: Reminder list name.
+- `<identifier>`: 0-based index or reminder ID string.
+- `<text>`: Optional new title.
+
+Options:
+
+- `--notes <notes>`: Set/update notes.
+- `--due-date <due-date>`: Set/update due date.
+- `--clear-due-date`: Clear due date and associated alarms.
+
+Behavior rules:
+
+- Provide at least one of `<text>`, `--notes`, `--due-date`, `--clear-due-date`.
+- `--due-date` and `--clear-due-date` cannot be used together.
+
+Examples:
+
+```bash
+ireminder edit "Inbox" 0 "Updated title"
+ireminder edit "Inbox" 0 --notes "Need manager sign-off"
+ireminder edit "Inbox" 0 --due-date "tomorrow 3pm"
+ireminder edit "Inbox" "B66DE785-4276-44F5-B16E-680EE3F19915" --clear-due-date
+ireminder edit "Inbox" 0 "Updated title" --notes "Need manager sign-off" --due-date "Friday 5pm"
+```
+
+### `delete`
+
+Usage:
+
+```bash
+ireminder delete <list-name> <identifier> [--include-completed]
+```
+
+Arguments:
+
+- `<list-name>`: Reminder list name.
+- `<identifier>`: 0-based index or reminder ID string.
+
+Options:
+
+- `--include-completed`: Include completed reminders when resolving index.
+
+Examples:
+
+```bash
+ireminder delete "Inbox" 0
+ireminder delete "Inbox" "B66DE785-4276-44F5-B16E-680EE3F19915"
+ireminder delete "Inbox" 0 --include-completed
+```
+
+### `new-list`
+
+Usage:
+
+```bash
+ireminder new-list <name> [--source <source>]
+```
+
+Arguments:
+
+- `<name>`: New list name.
+
+Options:
+
+- `--source <source>`: Account/source title (`iCloud`, `Local`, etc.).
+
+Examples:
+
+```bash
 ireminder new-list "Groceries"
-
-# Create in specific account
 ireminder new-list "Work Tasks" --source "iCloud"
 ```
 
-## Natural Language Date Examples
+## Date Input Examples
 
-The tool supports various natural language date formats:
+Natural-language parsing supports inputs like:
 
 - `today`
 - `tomorrow`
@@ -147,44 +310,41 @@ The tool supports various natural language date formats:
 - `Friday at 5pm`
 - `in 2 hours`
 - `in 3 days`
-- `2024-12-25`
-- `December 25th at 3:30pm`
+- `2026-05-21`
+- `May 21 2026 18:00`
+
+## Permissions and Troubleshooting
+
+On first run, macOS asks for Reminders access for your terminal app.
+
+If you see access denied:
+
+```bash
+tccutil reset Reminders
+```
+
+Then rerun `ireminder` and accept the permission prompt.
 
 ## Requirements
 
-- macOS 13.0 or later (Ventura+) - Required for EventKit's full Reminders access API
-- Swift 6.1 or later - Leverages StrictConcurrency for thread safety
-- Reminders access permission (will be requested on first run)
+- macOS 13.0 or later.
+- Swift 6.1 or later.
+- Reminders permission granted to your terminal app.
 
 ## Security & Privacy
 
-### Data Privacy
-- **Local-only operation**: All data processing happens locally on your Mac
-- **No network access**: The tool never sends your reminder data over the internet
-- **No analytics**: No usage data or telemetry is collected
-- **Direct EventKit integration**: Uses Apple's official APIs for secure Reminders access
+- Local-only operation.
+- No network calls for reminder operations.
+- No analytics or telemetry collection.
+- Uses Apple's EventKit APIs.
 
-### Permissions
-- On first run, macOS will prompt you to grant Reminders access
-- You can revoke access anytime in System Settings → Privacy & Security → Reminders
-- The tool will only access reminder data when you explicitly run commands
-
-### Best Practices
-- The tool doesn't store any credentials or sensitive data
-- All reminder operations go through macOS's security sandbox
-- Command history in your shell may contain reminder text - use your shell's privacy features if needed
-
-## Building from Source
+## Building and Testing
 
 ```bash
-# Clone the repository
-git clone https://github.com/VatsalSy/iReminderCLI.git
-cd iReminderCLI
-
-# Build debug version
+# Build debug
 swift build
 
-# Build release version
+# Build release
 swift build -c release
 
 # Run tests
@@ -193,4 +353,4 @@ swift test
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License. See `LICENSE`.
