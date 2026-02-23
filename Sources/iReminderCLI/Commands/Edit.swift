@@ -39,16 +39,6 @@ struct Edit: ParsableCommand {
       throw ExitCode.failure
     }
     
-    if dueDate != nil && clearDueDate {
-      print("Cannot use --due-date and --clear-due-date together.", to: &standardError)
-      throw ExitCode.failure
-    }
-
-    if text == nil && notes == nil && dueDate == nil && !clearDueDate {
-      print("Nothing to update. Provide new text, notes, due date, or --clear-due-date.", to: &standardError)
-      throw ExitCode.failure
-    }
-
     var newDueDateComponents: DateComponents?
     if let dueDateString = dueDate {
       let parser = DateParser()
@@ -76,9 +66,20 @@ struct Edit: ParsableCommand {
       reminder.dueDateComponents = dueDateComponents
       reminder.alarms = nil
 
-      if (dueDateComponents.hour != nil || dueDateComponents.minute != nil),
-         let dueDate = dueDateComponents.date {
-        reminder.addAlarm(EKAlarm(absoluteDate: dueDate))
+      if dueDateComponents.hour != nil || dueDateComponents.minute != nil {
+        let calendar = Calendar.current
+        let currentComponents = calendar.dateComponents([.year, .month, .day], from: Date())
+        let fallbackDate = calendar.date(from: DateComponents(
+          year: dueDateComponents.year ?? currentComponents.year,
+          month: dueDateComponents.month ?? currentComponents.month,
+          day: dueDateComponents.day ?? currentComponents.day,
+          hour: dueDateComponents.hour,
+          minute: dueDateComponents.minute
+        ))
+
+        if let alarmDate = dueDateComponents.date ?? fallbackDate {
+          reminder.addAlarm(EKAlarm(absoluteDate: alarmDate))
+        }
       }
     }
     

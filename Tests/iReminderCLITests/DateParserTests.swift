@@ -17,6 +17,31 @@ final class DateParserTests: XCTestCase {
     XCTAssertNotNil(components.minute)
   }
 
+  func testParseToComponentsRelativeHoursIncludesTime() {
+    let parser = DateParser()
+
+    guard let inTwoHours = parser.parseToComponents("in 2 hours") else {
+      XCTFail("Expected parser to return date components for 'in 2 hours'")
+      return
+    }
+
+    XCTAssertNotNil(inTwoHours.hour)
+    XCTAssertNotNil(inTwoHours.minute)
+
+    guard let inThirtyMinutes = parser.parseToComponents("in 30 minutes") else {
+      XCTFail("Expected parser to return date components for 'in 30 minutes'")
+      return
+    }
+
+    XCTAssertNotNil(inThirtyMinutes.hour)
+    XCTAssertNotNil(inThirtyMinutes.minute)
+  }
+
+  func testEditParseSucceedsForRunLevelValidationCases() throws {
+    XCTAssertNoThrow(try Edit.parse(["Shopping", "0"]))
+    XCTAssertNoThrow(try Edit.parse(["Shopping", "0", "--due-date", "tomorrow", "--clear-due-date"]))
+  }
+
   func testParseToComponentsDateOnlyOmitsTime() {
     let parser = DateParser()
 
