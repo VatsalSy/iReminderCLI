@@ -65,10 +65,14 @@ class DateParser {
     guard let date = parse(input) else { return nil }
     
     let calendar = Calendar.current
+    let lowercasedInput = input.lowercased()
+    let relativeTimePattern = #"^in\s+\d+\s+(hour|hours|minute|minutes)\b"#
+    let hasRelativeTime = lowercasedInput.range(of: relativeTimePattern, options: .regularExpression) != nil
     let hasTime = input.contains(":") || 
-                  input.lowercased().contains("am") || 
-                  input.lowercased().contains("pm") ||
-                  input.lowercased().contains("at")
+                  lowercasedInput.contains("am") || 
+                  lowercasedInput.contains("pm") ||
+                  lowercasedInput.contains("at") ||
+                  hasRelativeTime
     
     if hasTime {
       return calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)

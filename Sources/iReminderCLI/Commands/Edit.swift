@@ -1,4 +1,5 @@
 import ArgumentParser
+import EventKit
 import Foundation
 
 struct Edit: ParsableCommand {
@@ -18,6 +19,12 @@ struct Edit: ParsableCommand {
   
   @Option(name: .long, help: "New notes for the reminder")
   var notes: String?
+
+  @Option(name: .long, help: "New due date (e.g., 'today', 'tomorrow 3pm', 'next Monday')")
+  var dueDate: String?
+
+  @Flag(name: .long, help: "Clear the existing due date")
+  var clearDueDate = false
   
   mutating func run() throws {
     let reminders = Reminders()
@@ -32,9 +39,14 @@ struct Edit: ParsableCommand {
       throw ExitCode.failure
     }
     
-    if text == nil && notes == nil {
-      print("Nothing to update. Provide new text or notes.", to: &standardError)
-      throw ExitCode.failure
+    var newDueDateComponents: DateComponents?
+    if let dueDateString = dueDate {
+      let parser = DateParser()
+      guard let parsedComponents = parser.parseToComponents(dueDateString) else {
+        print("Invalid date format: '\(dueDateString)'", to: &standardError)
+        throw ExitCode.failure
+      }
+      newDueDateComponents = parsedComponents
     }
     
     if let newText = text {
@@ -43,6 +55,32 @@ struct Edit: ParsableCommand {
     
     if let newNotes = notes {
       reminder.notes = newNotes
+    }
+
+    if clearDueDate {
+      reminder.dueDateComponents = nil
+      reminder.alarms = nil
+    }
+
+    if let dueDateComponents = newDueDateComponents {
+      reminder.dueDateComponents = dueDateComponents
+      reminder.alarms = nil
+
+      if dueDateComponents.hour != nil || dueDateComponents.minute != nil {
+        let calendar = Calendar.current
+        let currentComponents = calendar.dateComponents([.year, .month, .day], from: Date())
+        let fallbackDate = calendar.date(from: DateComponents(
+          year: dueDateComponents.year ?? currentComponents.year,
+          month: dueDateComponents.month ?? currentComponents.month,
+          day: dueDateComponents.day ?? currentComponents.day,
+          hour: dueDateComponents.hour,
+          minute: dueDateComponents.minute
+        ))
+
+        if let alarmDate = dueDateComponents.date ?? fallbackDate {
+          reminder.addAlarm(EKAlarm(absoluteDate: alarmDate))
+        }
+      }
     }
     
     do {
