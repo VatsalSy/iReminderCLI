@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release iReminderCLI"
+  short_description: "Cut and publish semver iReminderCLI releases."
+  default_prompt: "Use $release-ireminder to cut and publish the next iReminderCLI release from main."
