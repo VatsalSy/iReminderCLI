@@ -22,7 +22,7 @@ struct IReminderCLI: ParsableCommand {
         ireminder help <subcommand>
         ireminder <subcommand> --help
       """,
-    version: "1.0.0",
+    version: "1.1.0",
     subcommands: [
       ShowLists.self,
       Show.self,
